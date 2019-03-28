@@ -15,8 +15,8 @@ class Types(Enum):
 types = (Types.Red, Types.Blue, Types.Yellow, Types.Green,
          Types.Purple, Types.Orange, Types.Grey)
 
-colors = ((200, 0, 0), (0, 0, 200), (230, 230, 0), (0, 220, 0), (204, 51, 255),
-          (238, 170, 68), (140, 140, 140))
+colors = ((200, 0, 0), (0, 0, 200), (230, 230, 0), (0, 160, 0), (204, 51, 255),
+          (255, 150, 51), (140, 140, 140))
 
 type_to_color = {Types.Red: colors[0],
                  Types.Blue: colors[1],
