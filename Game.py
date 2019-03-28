@@ -107,7 +107,6 @@ class Game:
             columns[d.x].remove(d)
         new_columns = []
         for c in range(8):
-            print("Need {} new blocks".format(destroy_in_column[c]))
             new_column = columns[c][::-1]
             if destroy_in_column[c] == 0:
                 new_columns.append(new_column[::-1])
@@ -125,12 +124,8 @@ class Game:
             new_desk.append([])
         for line in range(8):
             for column in range(8):
-                print(column, line)
                 new_desk[line].append(new_columns[column][line])
         self.desk = new_desk
-        for line in range(8):
-            print("{} {} {} {} {} {} {} {}".format(self.desk[line][0], self.desk[line][1], self.desk[line][2], self.desk[line][3],
-                                                   self.desk[line][4], self.desk[line][5], self.desk[line][6], self.desk[line][7]))
 
 
     @staticmethod
@@ -152,8 +147,6 @@ class Game:
                 current = (block1, block2, block3)
                 if block1.color == block2.color == block3.color:
                     destroy.extend(current)
-        for b in set(destroy):
-            print("\t" + str(b))
         return set(destroy)
 
     def create_start_blocks(self):
