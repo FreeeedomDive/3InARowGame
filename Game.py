@@ -43,7 +43,6 @@ class Game:
                     if pos[0] <= 800 and self.mouse_down_coord[0] != -1:
                         self.mouse_up_coord = pos
                         self.handle_mouse()
-                        print("==========")
                     else:
                         self.mouse_up_coord = (-1, -1)
                     self.selected_block = None
@@ -54,17 +53,13 @@ class Game:
         delta_y = self.mouse_up_coord[1] - self.mouse_down_coord[1]
         if abs(delta_x) > abs(delta_y):
             if delta_x > 0:
-                print("RIGHT")
                 self.make_step(self.desk, self.selected_block, 1, 0)
             elif delta_x < 0:
-                print("LEFT")
                 self.make_step(self.desk, self.selected_block, -1, 0)
         elif abs(delta_x) < abs(delta_y):
             if delta_y > 0:
                 self.make_step(self.desk, self.selected_block, 0, 1)
-                print("DOWN")
             elif delta_y < 0:
-                print("UP")
                 self.make_step(self.desk, self.selected_block, 0, -1)
 
     def make_step(self, desk, block, delta_x, delta_y):
@@ -103,7 +98,6 @@ class Game:
             for col in range(8):
                 columns[col].append(desk[line][col])
         for d in destroy:
-            print(d.x, d.y)
             columns[d.x].remove(d)
         new_columns = []
         for c in range(8):
