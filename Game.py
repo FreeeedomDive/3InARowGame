@@ -113,6 +113,7 @@ class Game:
                                          block.x + delta_x], desk[block.y][
                                          block.x]
             return
+        
         self.player_can_touch = False
         block.x = x + delta_x
         block.y = y + delta_y
