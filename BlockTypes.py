@@ -26,4 +26,10 @@ type_to_color = {Types.Red: colors[0],
                  Types.Orange: colors[5],
                  Types.Grey: colors[6]}
 
-pics = ()
+type_to_image = {Types.Red: "Images/red.png",
+                 Types.Blue: "Images/blue.png",
+                 Types.Yellow: "Images/yellow.png",
+                 Types.Green: "Images/green.png",
+                 Types.Purple: "Images/purple.png",
+                 Types.Orange: "Images/orange.png",
+                 Types.Grey: "Images/grey.png"}
