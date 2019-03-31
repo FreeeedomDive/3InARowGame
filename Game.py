@@ -7,14 +7,14 @@ import pygame
 
 import Block
 import BlockTypes
+from CrystalParticle import Particle
 
 
 class Game:
     def __init__(self, crystals, score):
-        # TODO: сохранение
         self.start_score = score
         self.score = score
-        self.display = (1100, 800)
+        self.display = (1100, 875)
         self.screen = pygame.display.set_mode(self.display)
         self.bg = pygame.Surface(self.display)
         self.background_color = "#322228"
@@ -35,22 +35,25 @@ class Game:
         self.next_level_thread = threading.Thread(target=self.start_countdown)
         self.go_to_next_level = False
         self.resets = 0
+        self.crystal_particles = []
+        self.separator_length = 750 // self.crystals_number
+        self.current_crystal_pos = 25
 
     def run(self):
         pygame.init()
-        pygame.display.set_caption("I Don't Know Hot To Name It")
+        pygame.display.set_caption("I Don't Know How To Name It")
         self.bg.fill(pygame.Color(self.background_color))
         while self.mainloop:
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     with open("save.txt", "w") as file:
-                        data = file.write("{} {}".format(self.crystals_number,
-                                                         self.start_score))
+                        file.write("{} {}".format(self.crystals_number,
+                                                  self.start_score))
                     sys.exit()
                 if e.type == pygame.MOUSEBUTTONDOWN:
                     if self.player_can_touch:
                         pos = pygame.mouse.get_pos()
-                        if pos[0] <= 800:
+                        if pos[0] <= 800 and pos[1] <= 800:
                             self.mouse_down_coord = pos
                             self.selected_block = self.desk[pos[1] // 100][
                                 pos[0] // 100]
@@ -141,6 +144,18 @@ class Game:
                     self.crystals_collected += 1
                     self.current_crystals_on_screen -= 1
                     self.score += 50 * combo
+                    start_x = d.centre_position[0]
+                    start_y = d.centre_position[1]
+                    finish_x = self.current_crystal_pos + (
+                                self.separator_length // 2)
+                    finish_y = 840
+                    p = Particle(d.color, start_x, start_y,
+                                 finish_x, finish_y,
+                                 (finish_x -
+                                  d.centre_position[0]) / 100,
+                                 (finish_y - d.centre_position[1]) / 100)
+                    self.crystal_particles.append(p)
+                    self.current_crystal_pos += self.separator_length
                 columns[d.x].remove(d)
                 self.score += 100 * combo
             new_columns = []
@@ -180,7 +195,6 @@ class Game:
                         self.desk[line][column].is_moving = True
             while not self.is_desk_ready(desk):
                 self.draw()
-            time.sleep(0.2)
             destroy = self.check_triple_stacks(desk)
             combo += 1
         if self.check_win():
@@ -278,17 +292,40 @@ class Game:
 
         self.screen.blit(self.bg, (0, 0))
         pygame.draw.line(self.screen, (255, 255, 255),
-                         (801, 0), (801, 800), 1)
-        font = pygame.font.Font(None, 30)
+                         (801, 0), (801, 875), 5)
+        pygame.draw.line(self.screen, (255, 255, 255),
+                         (0, 801), (801, 801), 5)
+        for i in range(1, 8):
+            pygame.draw.line(self.screen, (255, 255, 255),
+                             (1 + i * 100, 0), (1 + i * 100, 800), 1)
+            pygame.draw.line(self.screen, (255, 255, 255),
+                             (0, 1 + i * 100), (800, 1 + i * 100), 1)
+
+        font = pygame.font.Font(None, 40)
         t = "Score: {0}".format(self.score)
         text = font.render(t, True, (255, 255, 255))
         self.screen.blit(text, [820, 50])
-        t = "Crystals: {0}/{1}".format(self.crystals_collected,
-                                       self.crystals_number)
+        font = pygame.font.Font(None, 30)
+        t = "Crystals".format(self.crystals_collected,
+                              self.crystals_number)
         red = 255 - (self.crystals_collected / self.crystals_number) * 255
         green = (self.crystals_collected / self.crystals_number) * 255
         text = font.render(t, True, (red, green, 0))
-        self.screen.blit(text, [820, 150])
+        self.screen.blit(text, [10, 810])
+        t = "{}/{}".format(self.crystals_collected,
+                           self.crystals_number)
+        text = font.render(t, True, (red, green, 0))
+        self.screen.blit(text, [700, 810])
+
+        pygame.draw.line(self.screen, (red, green, 0),
+                         (24, 839), (776, 839), 2)
+        pygame.draw.line(self.screen, (red, green, 0),
+                         (24, 839), (24, 866), 2)
+        pygame.draw.line(self.screen, (red, green, 0),
+                         (776, 839), (776, 866), 2)
+        pygame.draw.line(self.screen, (red, green, 0),
+                         (24, 866), (776, 866), 2)
+
         for line in range(0, 8):
             for column in range(0, 8):
                 block = self.desk[line][column]
@@ -319,6 +356,15 @@ class Game:
                     block.draw(self.screen)
                 else:
                     block.draw(self.screen)
+        for p in self.crystal_particles:
+            p.coordinations[0] += p.move_speed[0]
+            p.coordinations[1] += p.move_speed[1]
+            p.draw(self.screen)
+            if abs(p.finish[0] - p.coordinations[0]) < 20 and abs(
+                    p.finish[1] - p.coordinations[1]) < 20:
+                p.coordinations[0] = p.finish[0]
+                p.coordinations[1] = p.finish[1]
+                p.move_speed = [0, 0]
 
         pygame.display.update()
 
@@ -335,6 +381,6 @@ if __name__ == '__main__':
         window = Game(int(data[0]), int(data[1]))
     except FileNotFoundError:
         with open("save.txt", "w") as file:
-            data = file.write("5 0")
+            file.write("5 0")
         window = Game(5, 0)
     window.run()
