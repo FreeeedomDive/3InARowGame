@@ -57,6 +57,15 @@ class Game:
                             self.mouse_down_coord = pos
                             self.selected_block = self.desk[pos[1] // 100][
                                 pos[0] // 100]
+                        elif 830 <= pos[0] <= 930 and 400 <= pos[1] < 430:
+                            self.resets += 1
+                            cost = 1500 * self.resets
+                            if self.score < cost:
+                                self.resets -= 1
+                            else:
+                                self.score -= cost
+                                self.create_start_blocks()
+                                self.current_crystals_on_screen = 0
                         else:
                             self.selected_block = None
                 if e.type == pygame.MOUSEBUTTONUP:
@@ -68,15 +77,6 @@ class Game:
                         else:
                             self.mouse_up_coord = (-1, -1)
                         self.selected_block = None
-                if e.type == pygame.KEYDOWN and e.key == pygame.K_r:
-                    self.resets += 1
-                    cost = 1500 * self.resets
-                    if self.score < cost:
-                        self.resets -= 1
-                    else:
-                        self.score -= cost
-                        self.create_start_blocks()
-                        self.current_crystals_on_screen = 0
             self.draw()
             if self.go_to_next_level:
                 window = Game(self.crystals_number + 5, self.score)
@@ -113,7 +113,7 @@ class Game:
                                          block.x + delta_x], desk[block.y][
                                          block.x]
             return
-        
+
         self.player_can_touch = False
         block.x = x + delta_x
         block.y = y + delta_y
@@ -326,6 +326,12 @@ class Game:
                          (776, 839), (776, 866), 2)
         pygame.draw.line(self.screen, (red, green, 0),
                          (24, 866), (776, 866), 2)
+
+        pygame.draw.rect(self.screen, (150, 0, 0), pygame.Rect(830, 400, 100, 30))
+        font = pygame.font.Font(None, 25)
+        t = "Reset desk"
+        text = font.render(t, True, (255, 255, 255))
+        self.screen.blit(text, [835, 405])
 
         for line in range(0, 8):
             for column in range(0, 8):
