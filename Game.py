@@ -40,10 +40,14 @@ class Game:
         self.crystal_particles = []
         self.separator_length = 750 / self.crystals_number
         self.current_crystal_pos = 25
-        self.level_start_time = int(round(time.time()))
         self.time_for_pass = self.crystals_number * 20
         self.time_for_pass = max(self.time_for_pass, 3 * 60)
         self.time_for_pass = min(self.time_for_pass, 6 * 60)
+        self.level_start_time = int(round(time.time()))
+        self.level_finish_time = self.level_start_time + self.time_for_pass
+        self.enough_time = True
+        self.time_thread = threading.Thread(target=self.timer)
+        self.time_remaining = self.level_finish_time - self.level_start_time
         self.last_moves_history = []
         self.no_justice = False
 
@@ -51,13 +55,15 @@ class Game:
         pygame.init()
         pygame.display.set_caption("I Don't Know How To Name It")
         self.bg.fill(pygame.Color(self.background_color))
+        self.time_thread.start()
         while self.mainloop:
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     with open("save.txt", "w") as file:
                         file.write("{} {}".format(self.crystals_number,
                                                   self.start_score))
-                    sys.exit()
+                    self.mainloop = False
+                    sys.exit(0)
                 if e.type == pygame.MOUSEBUTTONDOWN:
                     if self.player_can_touch:
                         pos = pygame.mouse.get_pos()
@@ -87,8 +93,13 @@ class Game:
                         self.selected_block = None
             self.draw()
             if self.go_to_next_level:
-                window = Game(self.crystals_number + 5, self.score)
-                window.run()
+                if self.enough_time:
+                    window = Game(self.crystals_number + 5, self.score)
+                    window.run()
+                else:
+                    window = Game(self.crystals_number, self.start_score)
+                    window.run()
+        print("end")
 
     def handle_mouse(self):
         delta_x = self.mouse_up_coord[0] - self.mouse_down_coord[0]
@@ -215,7 +226,7 @@ class Game:
                     if self.desk[line][column].move_speed[0] != 0 or \
                             self.desk[line][column].move_speed[1] != 0:
                         self.desk[line][column].is_moving = True
-            while not self.is_desk_ready(desk):
+            while not self.is_desk_ready(desk) and self.enough_time:
                 self.draw()
             destroy = self.check_triple_stacks(desk)
             combo += 1
@@ -229,7 +240,8 @@ class Game:
         else:
             self.player_can_touch = True
 
-    def check_justice_in_the_world(self, desk):
+    @staticmethod
+    def check_justice_in_the_world(desk):
         count = 0
         for x in range(8):
             for y in range(8):
@@ -279,6 +291,8 @@ class Game:
                     block.color = new_color
                     block.image_name = block.get_pic(new_color)
                     block.image = pygame.image.load(block.image_name)
+            elif last == BlockTypes.Types.Orange:
+                self.level_finish_time += 40
             self.last_moves_history.clear()
         return set(destroy)
 
@@ -383,6 +397,7 @@ class Game:
             color = (255, 0, 0)
         text = font.render(t, True, color)
         self.screen.blit(text, [820, 50])
+
         font = pygame.font.Font(None, 30)
         t = "Crystals".format(self.crystals_collected,
                               self.crystals_number)
@@ -404,6 +419,13 @@ class Game:
         pygame.draw.line(self.screen, (red, green, 0),
                          (24, 866), (776, 866), 2)
 
+        if not self.enough_time:
+            font = pygame.font.Font(None, 100)
+            t = "Time has up!"
+            color = (255, 0, 0)
+            text = font.render(t, True, color)
+            self.screen.blit(text, [220, 350])
+
         pygame.draw.rect(self.screen, (150, 0, 0), pygame.Rect(830, 400, 100, 30))
         font = pygame.font.Font(None, 25)
         t = "Reset desk"
@@ -413,7 +435,7 @@ class Game:
         for line in range(0, 8):
             for column in range(0, 8):
                 block = self.desk[line][column]
-                if self.level_passed:
+                if self.level_passed or not self.enough_time:
                     block.centre_position[1] += block.move_speed[1]
                 else:
                     if block.move_speed[0] != 0:
@@ -453,10 +475,38 @@ class Game:
         pygame.display.update()
 
     def timer(self):
-        pass
+        while self.enough_time and self.mainloop:
+            current = int(round(time.time()))
+
+            self.time_remaining = max(0, self.level_finish_time - current)
+
+            font = pygame.font.Font(None, 35)
+            t = "Time remaining: {}".format(
+                self.create_correct_time(self.time_remaining))
+            color = (255, 255, 255)
+            text = font.render(t, True, color)
+            self.screen.blit(text, [820, 350])
+
+            if self.time_remaining == 0:
+                self.enough_time = False
+                for line in range(8):
+                    for column in range(8):
+                        self.desk[line][column].move_speed = [0, 3]
+        if not self.level_passed:
+            self.start_countdown()
+
+    @staticmethod
+    def create_correct_time(time):
+        mins = time // 60
+        secs = time % 60
+        if secs < 10:
+            return "{}:0{}".format(mins, secs)
+        else:
+            return "{}:{}".format(mins, secs)
 
     def start_countdown(self):
-        time.sleep(2.5)
+        time.sleep(3)
+        self.mainloop = False
         self.go_to_next_level = True
 
 
