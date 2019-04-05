@@ -1,9 +1,11 @@
 import random
 import threading
 import time
+import datetime
 import sys
 import os
 import pygame
+import itertools
 
 import Block
 import BlockTypes
@@ -36,8 +38,14 @@ class Game:
         self.go_to_next_level = False
         self.resets = 0
         self.crystal_particles = []
-        self.separator_length = 750 // self.crystals_number
+        self.separator_length = 750 / self.crystals_number
         self.current_crystal_pos = 25
+        self.level_start_time = int(round(time.time()))
+        self.time_for_pass = self.crystals_number * 20
+        self.time_for_pass = max(self.time_for_pass, 3 * 60)
+        self.time_for_pass = min(self.time_for_pass, 6 * 60)
+        self.last_moves_history = []
+        self.no_justice = False
 
     def run(self):
         pygame.init()
@@ -113,7 +121,9 @@ class Game:
                                          block.x + delta_x], desk[block.y][
                                          block.x]
             return
-
+        self.last_moves_history.append(block.color)
+        if len(self.last_moves_history) > 2:
+            self.last_moves_history.pop(0)
         self.player_can_touch = False
         block.x = x + delta_x
         block.y = y + delta_y
@@ -129,8 +139,13 @@ class Game:
                 desk[line][column].y = line
 
         combo = 1
-
+        step = True
         while len(destroy) != 0:
+            if step:
+                temp = list(destroy)
+                temp.extend(self.check_and_execute_totem(desk, block.x,
+                                                         block.y))
+                destroy = set(temp)
             destroy_in_column = [0, 0, 0, 0, 0, 0, 0, 0]
             for d in destroy:
                 destroy_in_column[d.x] += 1
@@ -140,15 +155,21 @@ class Game:
             for line in range(8):
                 for col in range(8):
                     columns[col].append(desk[line][col])
+            count = self.check_justice_in_the_world(desk)
+            if count == 0:
+                self.score = self.score // 5 * 4
+                self.no_justice = True
+            ratio = 1
+            if not self.no_justice:
+                ratio = 1 + (0.05 * count)
             for d in destroy:
                 if d.has_crystal:
                     self.crystals_collected += 1
                     self.current_crystals_on_screen -= 1
-                    self.score += 50 * combo
+                    self.score += int(50 * combo * ratio)
                     start_x = d.centre_position[0]
                     start_y = d.centre_position[1]
-                    finish_x = self.current_crystal_pos + (
-                                self.separator_length // 2)
+                    finish_x = self.current_crystal_pos
                     finish_y = 840
                     p = Particle(d.color, start_x, start_y,
                                  finish_x, finish_y,
@@ -158,7 +179,7 @@ class Game:
                     self.crystal_particles.append(p)
                     self.current_crystal_pos += self.separator_length
                 columns[d.x].remove(d)
-                self.score += 100 * combo
+                self.score += int(100 * combo * ratio)
             new_columns = []
             for c in range(8):
                 new_column = columns[c][::-1]
@@ -198,6 +219,7 @@ class Game:
                 self.draw()
             destroy = self.check_triple_stacks(desk)
             combo += 1
+            step = False
         if self.check_win():
             self.level_passed = True
             for line in range(8):
@@ -206,6 +228,59 @@ class Game:
             self.next_level_thread.start()
         else:
             self.player_can_touch = True
+
+    def check_justice_in_the_world(self, desk):
+        count = 0
+        for x in range(8):
+            for y in range(8):
+                if desk[y][x].color == BlockTypes.Types.Grey:
+                    count += 1
+        return count
+
+    def check_and_execute_totem(self, desk, x, y):
+        destroy = []
+        if len(self.last_moves_history) == 1:
+            return destroy
+        last = self.last_moves_history[-1]
+        pre_last = self.last_moves_history[-2]
+        if last == pre_last:
+            if last == BlockTypes.Types.Blue:
+                s_x = random.randint(0, 5)
+                s_y = random.randint(0, 5)
+                for x, y in itertools.product(range(s_x, s_x + 3),
+                                              range(s_y, s_y + 3)):
+                    destroy.append(desk[y][x])
+                s_x = random.randint(0, 6)
+                s_y = random.randint(0, 6)
+                for x, y in itertools.product(range(s_x, s_x + 2),
+                                              range(s_y, s_y + 2)):
+                    destroy.append(desk[y][x])
+            elif last == BlockTypes.Types.Red:
+                for x, y in itertools.product(range(8), range(8)):
+                    if desk[y][x].color == BlockTypes.Types.Red:
+                        destroy.append(desk[y][x])
+            elif last == BlockTypes.Types.Green:
+                for x, y in itertools.product(range(8), range(8)):
+                    if desk[y][x].has_crystal:
+                        destroy.append(desk[y][x])
+            elif last == BlockTypes.Types.Grey:
+                for i in range(8):
+                    destroy.append(desk[y][i])
+                    destroy.append(desk[i][x])
+            elif last == BlockTypes.Types.Yellow:
+                self.score = int(self.score * 1.05)
+            elif last == BlockTypes.Types.Purple:
+                new_color = BlockTypes.types[random.randint(0, len(BlockTypes.types) - 1)]
+                number = random.randint(5, 25)
+                for i in range(number):
+                    x = random.randint(0, 7)
+                    y = random.randint(0, 7)
+                    block = desk[y][x]
+                    block.color = new_color
+                    block.image_name = block.get_pic(new_color)
+                    block.image = pygame.image.load(block.image_name)
+            self.last_moves_history.clear()
+        return set(destroy)
 
     def check_win(self):
         if self.crystals_collected == self.crystals_number:
@@ -267,7 +342,6 @@ class Game:
                 while not self.is_correct_color(color, line, column):
                     color = BlockTypes.types[
                         random.randint(0, len(BlockTypes.types) - 1)]
-                    r = random.randint(0, 20)
                     has_crystal = False
                     self.desk[line][column] = Block.Block(column, line, color,
                                                           has_crystal)
@@ -304,7 +378,10 @@ class Game:
 
         font = pygame.font.Font(None, 40)
         t = "Score: {0}".format(self.score)
-        text = font.render(t, True, (255, 255, 255))
+        color = (255, 255, 255)
+        if self.no_justice:
+            color = (255, 0, 0)
+        text = font.render(t, True, color)
         self.screen.blit(text, [820, 50])
         font = pygame.font.Font(None, 30)
         t = "Crystals".format(self.crystals_collected,
@@ -374,6 +451,9 @@ class Game:
                 p.move_speed = [0, 0]
 
         pygame.display.update()
+
+    def timer(self):
+        pass
 
     def start_countdown(self):
         time.sleep(2.5)
